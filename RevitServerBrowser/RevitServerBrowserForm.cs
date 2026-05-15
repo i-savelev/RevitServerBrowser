@@ -18,6 +18,7 @@ namespace RevitServerBrowser
         private Button _btnConfirm;
         private ComboBox _serverCombo; // 🔑 Новый элемент
         private readonly int _apiYear; // 🔑 Запоминаем год
+        private bool _isInitializing = true;
 
         /// <summary>
         /// Выбранные пути к моделям.
@@ -49,6 +50,7 @@ namespace RevitServerBrowser
             SetupForm();
             SetupControls(servers, defaultHost);
             ConnectToSelectedServer(); // Подключаемся к серверу по умолчанию
+            _isInitializing = false;
             LoadRootNode();
         }
 
@@ -124,6 +126,8 @@ namespace RevitServerBrowser
             _serverCombo.SelectedIndexChanged += (s, e) => OnServerChanged();
             btnReset.Click += (s, e) => ResetSelection();
             btnClose.Click += (s, e) => Close();
+            _tree.BeforeExpand += Tree_BeforeExpand;
+            _tree.NodeMouseClick += Tree_NodeMouseClick;
 
             // 🔑 4. Заполняем комбобокс и выставляем индекс (событие сработает безопасно)
             if (servers.Any())
@@ -151,6 +155,7 @@ namespace RevitServerBrowser
         /// </summary>
         private void OnServerChanged()
         {
+            if (_isInitializing) return;
             ConnectToSelectedServer();
             ReloadTree();
         }
