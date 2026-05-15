@@ -10,6 +10,12 @@ namespace RevitServerBrowser
     [Autodesk.Revit.Attributes.TransactionAttribute(Autodesk.Revit.Attributes.TransactionMode.Manual)]
     public class RS : IExternalCommand
     {
+        //---PluginsManager---//
+        public static string IS_TAB_NAME => "i-savelev";
+        public static string IS_NAME => "Ревит сервер";
+        public static string IS_IMAGE => "";
+        public static string IS_DESCRIPTION => "Браузер ревит сервера";
+        //---PluginsManager---//
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             try

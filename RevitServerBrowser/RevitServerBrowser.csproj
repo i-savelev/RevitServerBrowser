@@ -33,9 +33,11 @@
   <ItemGroup>
     <Reference Include="RevitAPI">
       <HintPath>..\RevitApi\RevitAPI.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="RevitAPIUI">
       <HintPath>..\RevitApi\RevitAPIUI.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -69,6 +71,9 @@
   <ItemGroup>
     <EmbeddedResource Include="Debugger.resx">
       <DependentUpon>Debugger.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="RevitServerBrowserForm.resx">
+      <DependentUpon>RevitServerBrowserForm.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -332,5 +332,17 @@ namespace RevitServerBrowser
             _client?.Dispose();
             base.OnFormClosing(e);
         }
+
+        private void InitializeComponent()
+        {
+            this.SuspendLayout();
+            // 
+            // RevitServerBrowserForm
+            // 
+            this.ClientSize = new System.Drawing.Size(284, 261);
+            this.Name = "RevitServerBrowserForm";
+            this.ResumeLayout(false);
+
+        }
     }
 }
