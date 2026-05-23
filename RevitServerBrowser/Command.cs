@@ -11,10 +11,10 @@ namespace RevitServerBrowser
     public class RS : IExternalCommand
     {
         //---PluginsManager---//
-        public static string IS_TAB_NAME => "i-savelev";
+        public static string IS_TAB_NAME => "ISTool";
         public static string IS_NAME => "Ревит сервер";
-        public static string IS_IMAGE => "";
-        public static string IS_DESCRIPTION => "Браузер ревит сервера";
+        public static string IS_IMAGE => "RevitServerBrowser.Resources.RS.png";
+        public static string IS_DESCRIPTION => "Автор: https://github.com/i-savelev\r\nБраузер ревит сервера";
         //---PluginsManager---//
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {

@@ -11,7 +11,8 @@ namespace RevitServerBrowser
     public class RevitServerClient : IDisposable
     {
         private readonly string _baseUrl;
-        private readonly WebClient _webClient;
+        private readonly TimeoutWebClient _webClient; // 🔑 Изменено на TimeoutWebClient
+        public int Timeout { get; set; } = 300000;    // 🔑 Публичное свойство для настройки
 
         public RevitServerClient(string host, int apiYear)
         {
@@ -21,7 +22,12 @@ namespace RevitServerBrowser
                 throw new ArgumentException("Год версии должен быть 2012 или новее.", "apiYear");
 
             _baseUrl = string.Format("http://{0}/RevitServerAdminRESTService{1}/AdminRESTService.svc", host, apiYear);
-            _webClient = new WebClient { Encoding = Encoding.UTF8 };
+
+            _webClient = new TimeoutWebClient
+            {
+                Encoding = Encoding.UTF8,
+                Timeout = Timeout // 🔑 Применяем таймаут
+            };
         }
 
         private Dictionary<string, string> BuildHeaders()
@@ -49,14 +55,23 @@ namespace RevitServerBrowser
 
             var url = $"{_baseUrl}/{path}/contents";
             Logger.Debug($"[CLIENT] URL: {url}");
-            if (string.IsNullOrEmpty(path) || !path.StartsWith("|"))
-                throw new ArgumentException("Путь должен начинать с '|'.", "path");
 
             foreach (var header in BuildHeaders())
                 _webClient.Headers[header.Key] = header.Value;
 
-            var json = _webClient.DownloadString(url);
-            return ParseJson(json, path);
+            try
+            {
+                Logger.Debug($"[CLIENT] Таймаут: {_webClient.Timeout} мс");
+                var json = _webClient.DownloadString(url);
+                return ParseJson(json, path);
+            }
+            catch (WebException ex) when (ex.Status == WebExceptionStatus.Timeout)
+            {
+                Logger.Error($"[CLIENT] ⏰ Таймаут при запросе '{url}' ({_webClient.Timeout} мс)");
+                throw new TimeoutException(
+                    $"Превышено время ожидания ответа от сервера ({_webClient.Timeout / 1000} сек). " +
+                    $"Попробуйте увеличить таймаут или проверить сеть.", ex);
+            }
         }
 
         private static List<RevitServerItem> ParseJson(string json, string parentPath)
@@ -114,8 +129,7 @@ namespace RevitServerBrowser
 
         public void Dispose()
         {
-            if (_webClient != null)
-                _webClient.Dispose();
+            _webClient?.Dispose();
         }
     }
 }

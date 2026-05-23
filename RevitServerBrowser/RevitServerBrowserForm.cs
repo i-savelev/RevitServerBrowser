@@ -11,19 +11,31 @@ namespace RevitServerBrowser
     /// </summary>
     public class RevitServerBrowserForm : Form
     {
-        private RevitServerClient _client; // ❗ не readonly — сервер может меняться
+        private RevitServerClient _client;
         private readonly Dictionary<string, bool> _selectedModels = new Dictionary<string, bool>();
         private TreeView _tree;
         private Label _statusLabel;
         private Button _btnConfirm;
-        private ComboBox _serverCombo; // 🔑 Новый элемент
-        private readonly int _apiYear; // 🔑 Запоминаем год
+        private ComboBox _serverCombo;
+        private readonly int _apiYear;
         private bool _isInitializing = true;
 
         /// <summary>
-        /// Выбранные пути к моделям.
+        /// Выбранные пути к моделям в формате RSN:// для прямого использования в Revit API.
         /// </summary>
         public IReadOnlyList<string> SelectedModelPaths =>
+            _selectedModels
+                .Where(kv => kv.Value)
+                .Select(kv => ToRsnPath(kv.Key))
+                .Where(p => p != null)
+                .ToList()
+                .AsReadOnly();
+
+        /// <summary>
+        /// Выбранные пути в исходном формате браузера (|Folder|Model.rvt).
+        /// Для отладки.
+        /// </summary>
+        public IReadOnlyList<string> SelectedModelPathsRaw =>
             _selectedModels.Where(kv => kv.Value).Select(kv => kv.Key).ToList().AsReadOnly();
 
         /// <summary>
@@ -38,18 +50,12 @@ namespace RevitServerBrowser
             ? kvp.Value
             : null;
 
-        /// <summary>
-        /// Инициализация формы.
-        /// </summary>
-        /// <param name="servers">Словарь: Название → Хост. Если пустой — поле ввода станет редактируемым.</param>
-        /// <param name="apiYear">Год API Revit Server.</param>
-        /// <param name="defaultHost">Хост по умолчанию (если есть).</param>
         public RevitServerBrowserForm(Dictionary<string, string> servers, int apiYear, string defaultHost = null)
         {
             _apiYear = apiYear;
             SetupForm();
             SetupControls(servers, defaultHost);
-            ConnectToSelectedServer(); // Подключаемся к серверу по умолчанию
+            ConnectToSelectedServer();
             _isInitializing = false;
             LoadRootNode();
         }
@@ -65,7 +71,6 @@ namespace RevitServerBrowser
 
         private void SetupControls(Dictionary<string, string> servers, string defaultHost)
         {
-            // 🔑 1. Создаём ВСЕ контролы ДО навешивания событий и установки значений
             _tree = new TreeView
             {
                 Dock = DockStyle.Fill,
@@ -111,7 +116,6 @@ namespace RevitServerBrowser
                 Text = "Готов"
             };
 
-            // 🔑 2. Собираем иерархию
             topPanel.Controls.Add(lblServer);
             topPanel.Controls.Add(_serverCombo);
             bottomPanel.Controls.Add(btnClose);
@@ -122,18 +126,15 @@ namespace RevitServerBrowser
             Controls.Add(bottomPanel);
             Controls.Add(topPanel);
 
-            // 🔑 3. Навешиваем события ТОЛЬКО ТЕПЕРЬ
             _serverCombo.SelectedIndexChanged += (s, e) => OnServerChanged();
             btnReset.Click += (s, e) => ResetSelection();
             btnClose.Click += (s, e) => Close();
             _tree.BeforeExpand += Tree_BeforeExpand;
             _tree.NodeMouseClick += Tree_NodeMouseClick;
 
-            // 🔑 4. Заполняем комбобокс и выставляем индекс (событие сработает безопасно)
             if (servers.Any())
             {
                 foreach (var kvp in servers) _serverCombo.Items.Add(kvp);
-
                 if (!string.IsNullOrEmpty(defaultHost))
                 {
                     var match = servers.FirstOrDefault(kvp => kvp.Value.Equals(defaultHost, StringComparison.OrdinalIgnoreCase));
@@ -150,9 +151,6 @@ namespace RevitServerBrowser
             }
         }
 
-        /// <summary>
-        /// Переподключает клиент к новому серверу при смене выбора.
-        /// </summary>
         private void OnServerChanged()
         {
             if (_isInitializing) return;
@@ -167,15 +165,15 @@ namespace RevitServerBrowser
             {
                 _client?.Dispose();
                 _client = new RevitServerClient(host, _apiYear);
+                // 🔑 Увеличиваем таймаут для больших структур
+                _client.Timeout = 600000;
                 Text = $"Revit Server Browser [{host}]";
             }
         }
 
         private void ReloadTree()
         {
-            // 🔑 Защита: если дерево ещё не создано (вызов при инициализации), просто выходим
             if (_tree == null) return;
-
             _tree.Nodes.Clear();
             _selectedModels.Clear();
             LoadRootNode();
@@ -201,7 +199,6 @@ namespace RevitServerBrowser
                 return;
             }
 
-            // Проверка клиента
             if (_client == null)
             {
                 Logger.Error("[TREE] ❌ _client == null!");
@@ -232,7 +229,6 @@ namespace RevitServerBrowser
 
                 Logger.Info($"[TREE] Ответ сервера: {items?.Count ?? 0} элементов");
 
-                // 🔥 Дамп первых 5 элементов для отладки
                 if (items != null && items.Any())
                 {
                     for (int i = 0; i < Math.Min(5, items.Count); i++)
@@ -338,16 +334,48 @@ namespace RevitServerBrowser
             base.OnFormClosing(e);
         }
 
+        #region Helpers
+
+        /// <summary>
+        /// Конвертирует внутренний путь браузера (|Folder|Model.rvt) 
+        /// в RSN:// путь для Revit API.
+        /// </summary>
+        private string ToRsnPath(string browserPath)
+        {
+            if (string.IsNullOrWhiteSpace(browserPath))
+            {
+                Logger.Warning($"[FORM] Пустой путь, пропускаем");
+                return null;
+            }
+
+            var host = SelectedServerHost;
+            if (string.IsNullOrWhiteSpace(host))
+            {
+                Logger.Error($"[FORM] Не выбран хост сервера");
+                return null;
+            }
+
+            if (!browserPath.StartsWith("|") || !browserPath.EndsWith(".rvt", StringComparison.OrdinalIgnoreCase))
+            {
+                Logger.Warning($"[FORM] Некорректный формат пути: {browserPath}");
+                return null;
+            }
+
+            var relativePath = browserPath.TrimStart('|').Replace('|', '/');
+            var rsnPath = $"RSN://{host}/{relativePath}";
+
+            Logger.Debug($"[FORM] Конвертация: '{browserPath}' → '{rsnPath}'");
+            return rsnPath;
+        }
+
+        #endregion
+
         private void InitializeComponent()
         {
             this.SuspendLayout();
-            // 
-            // RevitServerBrowserForm
-            // 
             this.ClientSize = new System.Drawing.Size(284, 261);
             this.Name = "RevitServerBrowserForm";
             this.ResumeLayout(false);
-
         }
     }
 }
