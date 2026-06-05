@@ -12,8 +12,8 @@ namespace RevitServerBrowser
         private static string _logFile = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "Temp",
-                "MIPLogs",
-                "app.log"
+                "i-savelev",
+                "RevitServerBrowser.log"
             );
         private static LogLevel _level = LogLevel.Debug;
 

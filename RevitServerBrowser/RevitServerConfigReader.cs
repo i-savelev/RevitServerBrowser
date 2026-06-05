@@ -35,6 +35,7 @@ namespace RevitServerBrowser
 
             try
             {
+                Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
                 // Читаем все строки
                 var lines = File.ReadAllLines(iniPath, Encoding.GetEncoding(1251));
                 Logger.Info($"[RSN] Строк в файле: {lines.Length}");
