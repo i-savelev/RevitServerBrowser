@@ -371,12 +371,19 @@ public class RevitServerItem
 RevitServerBrowser.dll
 ```
 
+Для запуска вместе с библиотекой также требуется:
+
+```text
+RevitLogger.dll
+```
+
 Основные зависимости:
 
 - `RevitAPI.dll`
 - `RevitAPIUI.dll`
+- `RevitLogger.dll`
 
-В репозитории уже лежат локальные копии `Revit API` DLL, поэтому проект можно открыть и собрать в Visual Studio без дополнительной ручной раскладки ссылок, если структура репозитория не менялась.
+В репозитории уже лежат локальные копии `Revit API` DLL, но `RevitLogger.dll` должен быть доступен по пути ссылки в проекте или лежать рядом с `RevitServerBrowser.dll` в выходной папке/папке плагина.
 
 ## Ограничения
 
