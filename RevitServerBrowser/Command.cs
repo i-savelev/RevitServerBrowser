@@ -1,6 +1,7 @@
 ﻿using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using System;
+using RevitLogger;
 
 
 namespace RevitServerBrowser
@@ -18,20 +19,7 @@ namespace RevitServerBrowser
         {
             try
             {
-                Logger.Clear();
-                Logger.Info("=== Запуск команды RevitServerBrowser ===");
-                string revitVersion = commandData.Application.Application.VersionNumber;
-                if (!int.TryParse(revitVersion, out int apiYear))
-                    apiYear = 2026; // fallback
-                var servers = RevitServerConfigReader.ReadServers(apiYear);
-                Logger.Info($"[CMD] Версия Revit: {revitVersion}");
-                Logger.Info($"[CMD] Получено серверов из конфига: {servers.Count}");
-                var form = new RevitServerBrowserForm(servers, apiYear);
-                foreach (var kvp in servers)
-                {
-                    Logger.Debug($"[CMD] Сервер: '{kvp.Key}' → '{kvp.Value}'");
-                }
-
+                var form = new RevitServerBrowserForm(commandData);
                 Logger.Info("[CMD] Создаю форму");
                 form.ConfirmButton.Click += (s, e) =>
                 {
@@ -39,9 +27,9 @@ namespace RevitServerBrowser
                     foreach (var model in form.SelectedModelPaths)
                     {
                         Logger.Debug($"[FORM] Модель: {model}");
-                        IsDebugWindow.AddRow(model);
+                        DebugWindow.AddRow(model);
                     }
-                    IsDebugWindow.Show();
+                    DebugWindow.Show();
                 };
                 form.ShowDialog();
                 Logger.Info("[CMD] Форма закрыта, завершаю команду");

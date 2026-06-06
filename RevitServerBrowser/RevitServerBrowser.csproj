@@ -39,6 +39,9 @@
       <HintPath>..\RevitApi\RevitAPIUI.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="RevitLogger">
+      <HintPath>..\..\RevitLogger\RevitLogger\bin\Debug\RevitLogger.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
@@ -55,14 +58,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Command.cs" />
-    <Compile Include="Debugger.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Debugger.Designer.cs">
-      <DependentUpon>Debugger.cs</DependentUpon>
-    </Compile>
-    <Compile Include="IsDebugWindow.cs" />
-    <Compile Include="Logger.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -80,9 +75,6 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Debugger.resx">
-      <DependentUpon>Debugger.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>

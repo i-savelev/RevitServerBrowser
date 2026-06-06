@@ -1,8 +1,13 @@
-﻿using System;
+﻿using Autodesk.Revit.UI;
+using RevitLogger;
+using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Windows.Forms;
+using ComboBox = System.Windows.Forms.ComboBox;
+
 
 namespace RevitServerBrowser
 {
@@ -50,8 +55,31 @@ namespace RevitServerBrowser
             ? kvp.Value
             : null;
 
-        public RevitServerBrowserForm(Dictionary<string, string> servers, int apiYear, string defaultHost = null)
+        public RevitServerBrowserForm(ExternalCommandData commandData, string defaultHost = null)
         {
+            UIApplication uiApp = commandData.Application;
+            var revitApp = uiApp?.Application;
+            Logger.SetLogPath(
+                Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                    "Temp",
+                    "i-savelev",
+                    "RevitServerBrowser.log"
+                    )
+                );
+            
+            Logger.Init(
+                hostName: revitApp?.VersionName,
+                hostVersionNumber: revitApp?.VersionNumber,
+                hostBuild: revitApp?.VersionBuild,
+                hasActiveDocument: uiApp.ActiveUIDocument != null);
+
+            string revitVersion = commandData.Application.Application.VersionNumber;
+            if (!int.TryParse(revitVersion, out int apiYear))
+                apiYear = 2026; // fallback
+            var servers = RevitServerConfigReader.ReadServers(apiYear);
+            Logger.Info($"Версия Revit: {revitVersion}");
+            Logger.Info($"Получено серверов из конфига: {servers.Count}");
             _apiYear = apiYear;
             SetupForm();
             SetupControls(servers, defaultHost);

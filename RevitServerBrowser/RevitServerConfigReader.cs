@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using RevitLogger;
 
 namespace RevitServerBrowser
 {
@@ -68,7 +69,10 @@ namespace RevitServerBrowser
             {
                 Logger.Error($"[RSN] ❌ Исключение при чтении: {ex.Message}");
             }
-
+            foreach (var kvp in servers)
+            {
+                Logger.Debug($"[CMD] Сервер: '{kvp.Key}' → '{kvp.Value}'");
+            }
             return servers;
         }
     }
