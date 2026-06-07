@@ -95,6 +95,7 @@ namespace RevitServerBrowser
             MinimumSize = new Size(450, 400);
             StartPosition = FormStartPosition.CenterParent;
             Font = new Font("Segoe UI", 9F);
+            ShowIcon = false;
         }
 
         private void SetupControls(Dictionary<string, string> servers, string defaultHost)
@@ -131,7 +132,7 @@ namespace RevitServerBrowser
                 BackColor = SystemColors.ControlLight
             };
             _btnConfirm = new Button { Text = "✅ Подтвердить", Width = 110, FlatStyle = FlatStyle.Flat };
-            var btnReset = new Button { Text = "🔄 Сброс", Width = 80, FlatStyle = FlatStyle.Flat };
+            var btnReset = new Button { Text = "⟲ Сброс", Width = 80, FlatStyle = FlatStyle.Flat };
             var btnClose = new Button { Text = "✖ Закрыть", Width = 80, DialogResult = DialogResult.Cancel };
 
             _statusLabel = new Label
