@@ -49,8 +49,8 @@ namespace RevitServerBrowser
                     if (string.IsNullOrEmpty(line) || line.StartsWith(";") || line.StartsWith("#"))
                         continue;
 
-                    // Берём только первую часть до пробела/табуляции/двоеточия (защита от IP:808)
-                    var host = line.Split(new[] { ':', ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries)[0];
+                    // Берём адрес до первого пробела/табуляции, сохраняя порт в формате host:port.
+                    var host = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries)[0];
 
                     if (!string.IsNullOrEmpty(host))
                     {

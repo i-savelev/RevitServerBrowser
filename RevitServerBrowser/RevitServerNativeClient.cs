@@ -245,18 +245,36 @@ namespace RevitServerBrowser
         {
             try
             {
-                var addresses = Dns.GetHostAddresses(host);
-                Logger.Info($"[NativeClient] DNS resolve | Host={host} | AddressCount={addresses.Length}");
+                var dnsHost = GetHostWithoutPort(host);
+                var addresses = Dns.GetHostAddresses(dnsHost);
+                Logger.Info($"[NativeClient] DNS resolve | Host={host} | DnsHost={dnsHost} | AddressCount={addresses.Length}");
 
                 for (var index = 0; index < addresses.Length; index++)
                 {
-                    Logger.Debug($"[NativeClient] DNS resolve | Host={host} | Index={index} | Address={addresses[index]}");
+                    Logger.Debug($"[NativeClient] DNS resolve | Host={host} | DnsHost={dnsHost} | Index={index} | Address={addresses[index]}");
                 }
             }
             catch (Exception ex)
             {
                 Logger.Exception(ex, $"[NativeClient] Ошибка DNS resolve | Host={host}");
             }
+        }
+
+        /// <summary>
+        /// Возвращает имя хоста без порта для DNS-диагностики.
+        /// </summary>
+        private static string GetHostWithoutPort(string host)
+        {
+            if (string.IsNullOrWhiteSpace(host))
+                return host;
+
+            if (Uri.TryCreate($"net.tcp://{host}", UriKind.Absolute, out var uri))
+                return uri.Host;
+
+            var portSeparatorIndex = host.LastIndexOf(':');
+            return portSeparatorIndex > 0
+                ? host.Substring(0, portSeparatorIndex)
+                : host;
         }
     }
 }
