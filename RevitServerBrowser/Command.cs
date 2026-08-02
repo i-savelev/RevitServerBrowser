@@ -13,7 +13,7 @@ namespace RevitServerBrowser
         public static string IS_TAB_NAME => "ISTools";
         public static string IS_NAME => "Ревит сервер";
         public static string IS_IMAGE => "RevitServerBrowser.Resources.RS.png";
-        public static string IS_DESCRIPTION => "Автор: https://github.com/i-savelev\r\nБраузер ревит сервера";
+        public static string IS_DESCRIPTION => "Автор: https://github.com/i-savelev\r\nРепозиторий: https://github.com/i-savelev/RevitServerBrowser\r\nБраузер ревит сервера.\r\nДемонстрационная команда - выводит список выделенных моделей";
         //---PluginsManager---//
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {

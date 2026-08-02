@@ -13,9 +13,9 @@ namespace RevitServerBrowser
     public class RSNative : IExternalCommand
     {
         public static string IS_TAB_NAME => "ISTools";
-        public static string IS_NAME => "Ревит сервер native";
+        public static string IS_NAME => "Ревит сервер (native)";
         public static string IS_IMAGE => "RevitServerBrowser.Resources.RS.png";
-        public static string IS_DESCRIPTION => "Автор: https://github.com/i-savelev\r\nБраузер ревит сервера через native WCF API";
+        public static string IS_DESCRIPTION => "Автор: https://github.com/i-savelev\r\nРепозиторий: https://github.com/i-savelev/RevitServerBrowser\r\nБраузер ревит сервера через native WCF API.\r\nДемонстрационная команда - выводит список выделенных моделей";
 
         /// <summary>
         /// Точка входа команды Revit.
@@ -68,8 +68,8 @@ namespace RevitServerBrowser
                 Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                     "Temp",
-                    "RevitServerBrowser",
-                    "native-command.log"));
+                    "i-savelev",
+                    "RevitServerBrowserNative.log"));
 
             Logger.SetLogLevel(Logger.LogLevel.Debug);
             Logger.Init(
