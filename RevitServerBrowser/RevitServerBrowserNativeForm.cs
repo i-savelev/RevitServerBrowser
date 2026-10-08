@@ -20,6 +20,7 @@ namespace RevitServerBrowser
         private TreeView _tree;
         private Label _statusLabel;
         private Button _btnConfirm;
+        private Button _btnSelectAllInFolder;
         private ComboBox _serverCombo;
         private bool _isInitializing = true;
 
@@ -132,7 +133,7 @@ namespace RevitServerBrowser
             var bottomPanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Bottom,
-                Height = 45,
+                Height = 70, // Увеличена высота для двух рядов кнопок
                 FlowDirection = FlowDirection.RightToLeft,
                 WrapContents = false,
                 Padding = new Padding(5),
@@ -140,8 +141,22 @@ namespace RevitServerBrowser
             };
 
             _btnConfirm = new Button { Text = "✅ Подтвердить", Width = 110, FlatStyle = FlatStyle.Flat };
+            _btnSelectAllInFolder = new Button { Text = "Выбрать все в папке", Width = 110, FlatStyle = FlatStyle.Flat };
             var resetButton = new Button { Text = "⟲ Сброс", Width = 80, FlatStyle = FlatStyle.Flat };
             var closeButton = new Button { Text = "✖ Закрыть", Width = 80, DialogResult = DialogResult.Cancel };
+
+            // Вертикальная группировка для размещения кнопки выбора под кнопкой подтверждения
+            var confirmPanel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                Width = 120,
+                Height = 60,
+                Margin = new Padding(0, 0, 5, 0),
+                Padding = Padding.Empty
+            };
+            confirmPanel.Controls.Add(_btnConfirm);
+            confirmPanel.Controls.Add(_btnSelectAllInFolder);
 
             _statusLabel = new Label
             {
@@ -155,9 +170,10 @@ namespace RevitServerBrowser
 
             topPanel.Controls.Add(serverLabel);
             topPanel.Controls.Add(_serverCombo);
+
             bottomPanel.Controls.Add(closeButton);
             bottomPanel.Controls.Add(resetButton);
-            bottomPanel.Controls.Add(_btnConfirm);
+            bottomPanel.Controls.Add(confirmPanel);
 
             Controls.Add(_tree);
             Controls.Add(_statusLabel);
@@ -167,6 +183,7 @@ namespace RevitServerBrowser
             _serverCombo.SelectedIndexChanged += (s, e) => OnServerChanged();
             resetButton.Click += (s, e) => ResetSelection();
             closeButton.Click += (s, e) => Close();
+            _btnSelectAllInFolder.Click += (s, e) => SelectAllInSelectedFolder();
             _tree.BeforeExpand += Tree_BeforeExpand;
             _tree.NodeMouseClick += Tree_NodeMouseClick;
 
@@ -191,26 +208,17 @@ namespace RevitServerBrowser
             }
         }
 
-        /// <summary>
-        /// Переподключает форму к новому серверу.
-        /// </summary>
         private void OnServerChanged()
         {
-            if (_isInitializing)
-                return;
-
+            if (_isInitializing) return;
             ConnectToSelectedServer();
             ReloadTree();
         }
 
-        /// <summary>
-        /// Создаёт native-клиент для текущего сервера.
-        /// </summary>
         private void ConnectToSelectedServer()
         {
             var host = SelectedServerHost;
-            if (string.IsNullOrWhiteSpace(host))
-                return;
+            if (string.IsNullOrWhiteSpace(host)) return;
 
             Logger.Info($"[NativeForm] Подключение к серверу: {host}");
 
@@ -236,22 +244,14 @@ namespace RevitServerBrowser
             }
         }
 
-        /// <summary>
-        /// Полностью перезагружает дерево.
-        /// </summary>
         private void ReloadTree()
         {
-            if (_tree == null)
-                return;
-
+            if (_tree == null) return;
             _tree.Nodes.Clear();
             _selectedModels.Clear();
             LoadRootNode();
         }
 
-        /// <summary>
-        /// Добавляет корневой узел дерева.
-        /// </summary>
         private void LoadRootNode()
         {
             var rootNode = new TreeNode("📁 Root") { Name = "|", Tag = "|" };
@@ -260,8 +260,39 @@ namespace RevitServerBrowser
         }
 
         /// <summary>
-        /// Лениво загружает содержимое раскрываемого узла.
+        /// Загружает содержимое узла с сервера (если еще не загружено).
         /// </summary>
+        private void LoadNodeContents(TreeNode node)
+        {
+            var path = node.Tag as string;
+            if (string.IsNullOrWhiteSpace(path) || _client == null) return;
+
+            if (node.Nodes.Count == 1 && node.Nodes[0].Text == "…")
+                node.Nodes.Clear();
+
+            if (node.Nodes.Count > 0) return; // Уже загружено
+
+            var items = _client.GetContents(path);
+            Logger.Info($"[NativeForm] Загружено элементов: {items.Count}");
+
+            foreach (var item in items)
+            {
+                var childNode = new TreeNode
+                {
+                    Name = item.Path,
+                    Tag = item.Path,
+                    Text = item.IsModel ? $"[ ] {item.Name}" : $"📁 {item.Name}"
+                };
+
+                if (item.IsFolder)
+                    childNode.Nodes.Add(new TreeNode("…") { ForeColor = Color.Gray });
+                else if (item.IsModel)
+                    _selectedModels[item.Path] = false;
+
+                node.Nodes.Add(childNode);
+            }
+        }
+
         private void Tree_BeforeExpand(object sender, TreeViewCancelEventArgs e)
         {
             var node = e.Node;
@@ -284,21 +315,11 @@ namespace RevitServerBrowser
                 {
                     Logger.Error("[NativeForm] Переподключение не удалось");
                     _statusLabel.Text = $"Нет подключения: {SelectedServerHost ?? "сервер не выбран"}";
-                    MessageBox.Show(
-                        this,
-                        $"Не удалось подключиться к серверу '{SelectedServerHost ?? "unknown"}'.\nПроверьте VPN, сеть и доступность сервера.",
-                        "Revit Server Native",
-                        MessageBoxButtons.OK,
-                        MessageBoxIcon.Warning);
+                    MessageBox.Show(this, $"Не удалось подключиться к серверу '{SelectedServerHost ?? "unknown"}'.\nПроверьте VPN, сеть и доступность сервера.", "Revit Server Native", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    e.Cancel = true;
                     return;
                 }
             }
-
-            if (node.Nodes.Count == 1 && node.Nodes[0].Text == "…")
-                node.Nodes.Clear();
-
-            if (node.Nodes.Count > 0)
-                return;
 
             try
             {
@@ -306,38 +327,15 @@ namespace RevitServerBrowser
                 _tree.Enabled = false;
                 _statusLabel.Text = $"Загрузка {path}...";
 
-                var items = _client.GetContents(path);
-                Logger.Info($"[NativeForm] Загружено элементов: {items.Count}");
+                LoadNodeContents(node);
 
-                foreach (var item in items)
-                {
-                    var childNode = new TreeNode
-                    {
-                        Name = item.Path,
-                        Tag = item.Path,
-                        Text = item.IsModel ? $"[ ] {item.Name}" : $"📁 {item.Name}"
-                    };
-
-                    if (item.IsFolder)
-                        childNode.Nodes.Add(new TreeNode("…") { ForeColor = Color.Gray });
-                    else if (item.IsModel)
-                        _selectedModels[item.Path] = false;
-
-                    node.Nodes.Add(childNode);
-                }
-
-                _statusLabel.Text = $"Загружено: {items.Count} элементов";
+                _statusLabel.Text = $"Загружено: {node.Nodes.Count} элементов";
             }
             catch (Exception ex)
             {
                 Logger.Exception(ex, $"[NativeForm] Ошибка загрузки узла: {path}");
                 _statusLabel.Text = "Ошибка загрузки";
-                MessageBox.Show(
-                    this,
-                    $"Не удалось загрузить '{path}':\n{ex.Message}",
-                    "Revit Server Native",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                MessageBox.Show(this, $"Не удалось загрузить '{path}':\n{ex.Message}", "Revit Server Native", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
@@ -347,8 +345,91 @@ namespace RevitServerBrowser
         }
 
         /// <summary>
-        /// Переключает состояние выбора модели по клику.
+        /// Рекурсивно раскрывает папку и выбирает все вложенные модели.
         /// </summary>
+        private void ExpandAndSelectAll(TreeNode node)
+        {
+            if (node == null) return;
+
+            var path = node.Tag as string;
+            if (string.IsNullOrWhiteSpace(path)) return;
+
+            // Если это модель, выбираем её
+            if (_selectedModels.ContainsKey(path))
+            {
+                _selectedModels[path] = true;
+                node.Text = $"[✓] {ExtractModelName(node.Text)}";
+            }
+            else
+            {
+                // Это папка: загружаем содержимое, если еще не загружено
+                LoadNodeContents(node);
+                node.Expand();
+
+                // Рекурсивно обрабатываем всех детей
+                foreach (TreeNode child in node.Nodes)
+                {
+                    ExpandAndSelectAll(child);
+                }
+            }
+        }
+
+        private void SelectAllInSelectedFolder()
+        {
+            var selectedNode = _tree.SelectedNode;
+            if (selectedNode == null)
+            {
+                _statusLabel.Text = "Выберите папку в дереве";
+                return;
+            }
+
+            var path = selectedNode.Tag as string;
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                _statusLabel.Text = "Некорректный узел";
+                return;
+            }
+
+            if (_selectedModels.ContainsKey(path))
+            {
+                _statusLabel.Text = "Выбрана модель, а не папка. Выберите папку.";
+                return;
+            }
+
+            if (_client == null)
+            {
+                ConnectToSelectedServer();
+                if (_client == null)
+                {
+                    _statusLabel.Text = $"Нет подключения: {SelectedServerHost ?? "сервер не выбран"}";
+                    return;
+                }
+            }
+
+            try
+            {
+                Cursor = Cursors.WaitCursor;
+                _tree.Enabled = false;
+                _statusLabel.Text = "Раскрытие и выбор всех моделей...";
+
+                ExpandAndSelectAll(selectedNode);
+
+                int count = _selectedModels.Count(kv => kv.Value);
+                _statusLabel.Text = $"Выбрано: {count} моделей";
+            }
+            catch (Exception ex)
+            {
+                Logger.Exception(ex, "[NativeForm] Ошибка при выборе всех в папке");
+                _statusLabel.Text = "Ошибка при выборе";
+                MessageBox.Show(this, $"Ошибка: {ex.Message}", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _tree.Enabled = true;
+                Cursor = Cursors.Default;
+            }
+        }
+
         private void Tree_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
         {
             var node = e.Node;
@@ -365,23 +446,13 @@ namespace RevitServerBrowser
             _statusLabel.Text = $"Выбрано: {_selectedModels.Count(kv => kv.Value)} моделей";
         }
 
-        /// <summary>
-        /// Убирает технический префикс выбора из текста модели.
-        /// </summary>
         private static string ExtractModelName(string displayText)
         {
-            if (displayText.StartsWith("[✓] "))
-                return displayText.Substring(4);
-
-            if (displayText.StartsWith("[ ] "))
-                return displayText.Substring(4);
-
+            if (displayText.StartsWith("[✓] ")) return displayText.Substring(4);
+            if (displayText.StartsWith("[ ] ")) return displayText.Substring(4);
             return displayText;
         }
 
-        /// <summary>
-        /// Сбрасывает текущий выбор моделей.
-        /// </summary>
         public void ResetSelection()
         {
             foreach (var path in _selectedModels.Keys.ToList())
@@ -391,48 +462,28 @@ namespace RevitServerBrowser
                 if (node != null)
                     node.Text = $"[ ] {ExtractModelName(node.Text)}";
             }
-
             _statusLabel.Text = "Выбор сброшен";
         }
 
-        /// <summary>
-        /// Находит узел по внутреннему пути.
-        /// </summary>
-        private TreeNode FindNode(string path)
-        {
-            return FindNodeRecursive(_tree.Nodes, path);
-        }
+        private TreeNode FindNode(string path) => FindNodeRecursive(_tree.Nodes, path);
 
-        /// <summary>
-        /// Рекурсивно ищет узел по пути.
-        /// </summary>
         private static TreeNode FindNodeRecursive(TreeNodeCollection nodes, string path)
         {
             foreach (TreeNode node in nodes)
             {
-                if (path.Equals(node.Tag as string))
-                    return node;
-
+                if (path.Equals(node.Tag as string)) return node;
                 var foundNode = FindNodeRecursive(node.Nodes, path);
-                if (foundNode != null)
-                    return foundNode;
+                if (foundNode != null) return foundNode;
             }
-
             return null;
         }
 
-        /// <summary>
-        /// Освобождает ресурсы формы при закрытии.
-        /// </summary>
         protected override void OnFormClosing(FormClosingEventArgs e)
         {
             _client?.Dispose();
             base.OnFormClosing(e);
         }
 
-        /// <summary>
-        /// Преобразует внутренний путь браузера в RSN:// путь.
-        /// </summary>
         private string ToRsnPath(string browserPath)
         {
             if (string.IsNullOrWhiteSpace(browserPath))
